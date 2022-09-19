@@ -1,11 +1,12 @@
-package main
+package web
 
 import (
 	"bufio"
-	"crypto/md5"
-	"encoding/json"
+	"crontab/internal/conf"
+	consts "crontab/internal/const"
+	"crontab/internal/job"
+	"crontab/internal/logger"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -23,8 +24,8 @@ import (
 *  status获取正在执行的任务
  */
 
-func get(w http.ResponseWriter, r *http.Request) {
-	allJobs, err := configJobs.json()
+func Get(w http.ResponseWriter, r *http.Request) {
+	allJobs, err := job.Serialize()
 	if err != nil {
 		fmt.Fprintf(w, "%s", err)
 	} else {
@@ -32,42 +33,35 @@ func get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func set(w http.ResponseWriter, r *http.Request) {
+func Set(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
-	h := r.FormValue("h")
+	// h := r.FormValue("h")
 	j := r.FormValue("j")
 	j = strings.TrimSpace(j)
 	if j == "" {
 		fmt.Fprintf(w, "%s", "job empty")
 	}
-	decode := json.NewDecoder(strings.NewReader(j))
-	var jj job
-	if decerr := decode.Decode(&jj); decerr != nil {
-		fmt.Fprintf(w, "%s", decerr)
-		return
-	}
-	parseTime(&jj)
-	if h == "" {
-		md5er := md5.New()
-		io.WriteString(md5er, j)
-		h = fmt.Sprintf("%x", md5er.Sum(nil))
-	}
-
-	configJobs.add(h, &jj)
-	_, err = flushConf()
+	successful, err := job.Add(j)
 	if err != nil {
 		fmt.Fprintf(w, "%s", err)
-	} else {
-		fmt.Fprintf(w, "%s", "success")
+		return
+	} else if !successful {
+		fmt.Fprintf(w, "undefined error")
+		return
 	}
+	_, err = conf.Save()
+	if err != nil {
+		fmt.Fprintf(w, "%s", err)
+	}
+	fmt.Fprintf(w, "%s", "success")
 }
 
-func del(w http.ResponseWriter, r *http.Request) {
+func Del(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	h := r.FormValue("h")
 	h = strings.TrimSpace(h)
-	configJobs.del(h)
-	_, err = flushConf()
+	job.Delete(h)
+	_, err = conf.Save()
 	if err != nil {
 		fmt.Fprintf(w, "%s", err)
 	} else {
@@ -75,18 +69,18 @@ func del(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func loger(w http.ResponseWriter, r *http.Request) {
+func Loger(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
-	d := r.FormValue("d")
+	dayNum := r.FormValue("d")
 
 	reg := regexp.MustCompile(`^[0-9]{8}$`)
-	b := reg.MatchString(d)
+	b := reg.MatchString(dayNum)
 
 	if !b {
 		fmt.Fprintf(w, "%s", "invalid day")
 		return
 	}
-	file := *logs + d + "_" + RUN_LOG_POSTFIX
+	file := logger.FilePath() + dayNum + "_" + consts.RUN_LOG_POSTFIX
 
 	fp, err := os.Open(file)
 
@@ -100,8 +94,8 @@ func loger(w http.ResponseWriter, r *http.Request) {
 	rd.WriteTo(w)
 }
 
-func load(w http.ResponseWriter, r *http.Request) {
-	loaded, loadErr := loadConf()
+func Load(w http.ResponseWriter, r *http.Request) {
+	loaded, loadErr := conf.Load(nil)
 	if loaded {
 		fmt.Fprintf(w, "%s", "success")
 	} else {
@@ -110,7 +104,7 @@ func load(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func status(w http.ResponseWriter, r *http.Request) {
+func Status(w http.ResponseWriter, r *http.Request) {
 	brunning, err := runningJobs.json()
 	if err != nil {
 		fmt.Fprintf(w, "%s", err)
@@ -119,12 +113,12 @@ func status(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func stop(w http.ResponseWriter, r *http.Request) {
+func Stop(w http.ResponseWriter, r *http.Request) {
 	stopCh <- true
 	fmt.Fprintf(w, "%s", "success")
 }
 
-func start(w http.ResponseWriter, r *http.Request) {
+func Start(w http.ResponseWriter, r *http.Request) {
 	startCh <- true
 	fmt.Fprintf(w, "%s", "success")
 }

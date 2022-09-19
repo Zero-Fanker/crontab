@@ -1,6 +1,7 @@
-package main
+package job
 
 import (
+	"crontab/internal/comm"
 	"encoding/json"
 	"sync"
 	"time"
@@ -17,11 +18,7 @@ type job struct {
 	Out     string   `json:"out"`     //输出文件
 	Comment string   `json:"comment"` //任务备注
 	Start   string   `json:"start"`   //任务单次执行仅用作状态使用
-	minute  []int
-	hour    []int
-	dom     []int
-	month   []int
-	dow     []int
+	comm.Schedule
 }
 
 func NewJobs() *Jobs {
@@ -74,11 +71,11 @@ func (jobs *Jobs) runJobs() {
 		month := int(t.Month())
 		dow := int(t.Weekday())
 		for _, j := range jobs.mj {
-			if inArray(j.minute, minute) &&
-				inArray(j.hour, hour) &&
-				inArray(j.dom, dom) &&
-				inArray(j.month, month) &&
-				inArray(j.dow, dow) {
+			if inArray(j.Minute, minute) &&
+				inArray(j.Hour, hour) &&
+				inArray(j.Dom, dom) &&
+				inArray(j.Month, month) &&
+				inArray(j.Dow, dow) {
 				go runJob(*j)
 			}
 		}

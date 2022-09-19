@@ -1,6 +1,7 @@
-package main
+package logger
 
 import (
+	consts "crontab/internal/const"
 	"fmt"
 	"log"
 	"os"
@@ -10,20 +11,38 @@ import (
 
 var sysLog *log.Logger
 var runLog *wyLogger
+var filePath *string
 
-func initLog() {
-	slogs := *logs
+func SysWriteLn(v ...interface{}) {
+	sysLog.Println(v...)
+}
+
+func SysPrintf(fmt string, vals ...interface{}) {
+	sysLog.Printf(fmt, vals...)
+}
+
+func Printf(fmt string, vals ...interface{}) {
+	runLog.lg.Printf(fmt, vals...)
+}
+
+func Configure(path *string) {
+	filePath = path
+	slogs := *filePath
 	if slogs[len(slogs)-1] != '/' {
-		*logs = *logs + "/"
+		*filePath = *filePath + "/"
 	}
 
-	sysLogFile, err := os.OpenFile(*logs+SVR_LOG, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	sysLogFile, err := os.OpenFile(*filePath+consts.SVR_LOG, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf("%s \nStart failed!", err)
 		os.Exit(1)
 	}
 	sysLog = log.New(sysLogFile, "", log.LstdFlags)
-	runLog = newWyLogger(*logs, RUN_LOG_POSTFIX)
+	runLog = newWyLogger(*filePath, consts.RUN_LOG_POSTFIX)
+}
+
+func FilePath() string {
+	return *filePath
 }
 
 type wyLogger struct {
@@ -49,7 +68,7 @@ func newWyLogger(dir string, filename string) *wyLogger {
 }
 
 func (l *wyLogger) isMustRename() bool {
-	t, _ := time.Parse(DATEFORMAT, time.Now().Format(DATEFORMAT))
+	t, _ := time.Parse(consts.DATEFORMAT, time.Now().Format(consts.DATEFORMAT))
 	if t.After(*l._date) {
 		return true
 	}
@@ -62,8 +81,8 @@ func (l *wyLogger) rename() {
 		if l.logfile != nil {
 			l.logfile.Close()
 		}
-		tf := time.Now().Format(DATEFORMAT)
-		t, _ := time.Parse(DATEFORMAT, tf)
+		tf := time.Now().Format(consts.DATEFORMAT)
+		t, _ := time.Parse(consts.DATEFORMAT, tf)
 		l._date = &t
 		fn := l.dir + tf + "_" + l.filename
 		l.logfile, _ = os.OpenFile(fn, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
