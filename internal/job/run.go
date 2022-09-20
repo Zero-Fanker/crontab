@@ -37,8 +37,8 @@ func Stop() {
 	stopCh <- true
 }
 
-func AddAll(jobs []Job) (bool, error) {
-	for _, job := range jobs {
+func AddAll(jobs *[]Job) (bool, error) {
+	for _, job := range *jobs {
 		_, err := job.Schedule.Parse(job.Time)
 		if err != nil {
 			logger.SysPrintf("Err %s %s.\n", err, job.Time)
@@ -54,6 +54,7 @@ func AddAll(jobs []Job) (bool, error) {
 		md5Val := md5.New()
 		io.WriteString(md5Val, string(jret))
 		hsum := fmt.Sprintf("%x", md5Val.Sum(nil))
+		logger.SysPrintf("Adding task [%s], (%s,%v)\n", hsum, job.Comment, job.Time)
 		configJobs.add(hsum, &job)
 	}
 	return true, nil

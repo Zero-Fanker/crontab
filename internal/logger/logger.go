@@ -3,6 +3,7 @@ package logger
 import (
 	consts "crontab/internal/const"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"sync"
@@ -11,7 +12,7 @@ import (
 
 var sysLog *log.Logger
 var runLog *wyLogger
-var filePath *string
+var dirPath *string
 
 func SysWriteLn(v ...interface{}) {
 	sysLog.Println(v...)
@@ -26,23 +27,31 @@ func Printf(fmt string, vals ...interface{}) {
 }
 
 func Configure(path *string) {
-	filePath = path
-	slogs := *filePath
+	dirPath = path
+	slogs := *dirPath
 	if slogs[len(slogs)-1] != '/' {
-		*filePath = *filePath + "/"
+		*dirPath = *dirPath + "/"
 	}
 
-	sysLogFile, err := os.OpenFile(*filePath+consts.SVR_LOG, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if _, err := os.Stat(*dirPath); os.IsNotExist(err) {
+		err = os.Mkdir(*dirPath, fs.ModePerm)
+		if err != nil {
+			fmt.Printf("Mkdir err: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	sysLogFile, err := os.OpenFile(*dirPath+consts.SVR_LOG, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
-		fmt.Printf("%s \nStart failed!", err)
+		fmt.Printf("%s \nStart failed!\n", err)
 		os.Exit(1)
 	}
 	sysLog = log.New(sysLogFile, "", log.LstdFlags)
-	runLog = newWyLogger(*filePath, consts.RUN_LOG_POSTFIX)
+	runLog = newWyLogger(*dirPath, consts.RUN_LOG_POSTFIX)
 }
 
 func FilePath() string {
-	return *filePath
+	return *dirPath
 }
 
 type wyLogger struct {

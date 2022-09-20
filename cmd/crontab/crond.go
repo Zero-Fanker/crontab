@@ -19,7 +19,7 @@ func main() {
 
 	var port *string = flag.String("port", ":8080", "web port")
 	var logPath *string = flag.String("logs", "logs/", "log path")
-	var confs *string = flag.String("conf", "crontab.conf", "crontab config")
+	var confs *string = flag.String("conf", "crontab.json", "crontab config")
 
 	logger.Configure(logPath)
 

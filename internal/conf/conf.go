@@ -30,14 +30,14 @@ func Load(conf *string) (bool, error) {
 		logger.SysPrintf("Err %s .\n", err)
 		return false, err
 	}
-	var allJobs ConfStruct
+	allJobs := new([]job.Job)
 	err = json.Unmarshal(content, &allJobs)
 	if err != nil {
 		logger.SysPrintf("Err %s .\n", err)
 		return false, err
 	}
 
-	successful, err := job.AddAll(allJobs.jobs)
+	successful, err := job.AddAll(allJobs)
 	if err != nil {
 		logger.SysPrintf("Err %s .\n", err)
 		return false, err
