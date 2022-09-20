@@ -22,8 +22,8 @@ import (
 
 var stopCh chan bool = make(chan bool)
 var startCh chan bool = make(chan bool)
-var configJobs *Jobs
-var runningJobs *Jobs
+var configJobs *JobContainer
+var runningJobs *JobContainer
 
 func Reset() {
 	configJobs = NewJobs()
@@ -33,9 +33,35 @@ func Run() {
 	go jobHandle()
 }
 
+func Stop() {
+	stopCh <- true
+}
+
+func AddAll(jobs []Job) (bool, error) {
+	for _, job := range jobs {
+		_, err := job.Schedule.Parse(job.Time)
+		if err != nil {
+			logger.SysPrintf("Err %s %s.\n", err, job.Time)
+			return false, err
+		}
+
+		jret, err := json.Marshal(job)
+		if err != nil {
+			logger.SysPrintf("Err %s %s.\n", err, job.Time)
+			return false, err
+		}
+
+		md5Val := md5.New()
+		io.WriteString(md5Val, string(jret))
+		hsum := fmt.Sprintf("%x", md5Val.Sum(nil))
+		configJobs.add(hsum, &job)
+	}
+	return true, nil
+}
+
 func Add(jstr string) (bool, error) {
 	decode := json.NewDecoder(strings.NewReader(jstr))
-	var j job
+	var j Job
 	if decErr := decode.Decode(&j); decErr != nil {
 		logger.SysPrintf("Err %s %s.\n", decErr, jstr)
 		return false, decErr
@@ -58,7 +84,10 @@ func Delete(key string) {
 	configJobs.del(key)
 }
 
-func Serialize() ([]byte, error) {
+func Serialize(current bool) ([]byte, error) {
+	if current {
+		return runningJobs.json()
+	}
 	return configJobs.json()
 }
 
@@ -83,7 +112,7 @@ func jobHandle() {
 	}
 }
 
-func runJob(j job) {
+func runJob(j Job) {
 	cmd := exec.Command(j.Cmd, j.Args...)
 	outpipe, outErr := cmd.StdoutPipe()
 	if outErr != nil {

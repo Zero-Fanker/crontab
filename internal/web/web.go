@@ -25,7 +25,7 @@ import (
  */
 
 func Get(w http.ResponseWriter, r *http.Request) {
-	allJobs, err := job.Serialize()
+	allJobs, err := job.Serialize(false)
 	if err != nil {
 		fmt.Fprintf(w, "%s", err)
 	} else {
@@ -105,7 +105,7 @@ func Load(w http.ResponseWriter, r *http.Request) {
 }
 
 func Status(w http.ResponseWriter, r *http.Request) {
-	brunning, err := runningJobs.json()
+	brunning, err := job.Serialize(true)
 	if err != nil {
 		fmt.Fprintf(w, "%s", err)
 	} else {
@@ -114,11 +114,11 @@ func Status(w http.ResponseWriter, r *http.Request) {
 }
 
 func Stop(w http.ResponseWriter, r *http.Request) {
-	stopCh <- true
+	job.Stop()
 	fmt.Fprintf(w, "%s", "success")
 }
 
 func Start(w http.ResponseWriter, r *http.Request) {
-	startCh <- true
+	job.Stop()
 	fmt.Fprintf(w, "%s", "success")
 }

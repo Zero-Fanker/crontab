@@ -11,7 +11,7 @@ import (
 *  任务列表管理（添加，删除，更新）
  */
 
-type job struct {
+type Job struct {
 	Time    string   `json:"time"`    //任务执行时间
 	Cmd     string   `json:"cmd"`     //可执行程序
 	Args    []string `json:"args"`    //执行参数
@@ -21,46 +21,46 @@ type job struct {
 	comm.Schedule
 }
 
-func NewJobs() *Jobs {
-	return &Jobs{mj: make(map[string]*job), lk: new(sync.RWMutex)}
+func NewJobs() *JobContainer {
+	return &JobContainer{mj: make(map[string]*Job), lk: new(sync.RWMutex)}
 }
 
-type Jobs struct {
-	mj map[string]*job
+type JobContainer struct {
+	mj map[string]*Job
 	lk *sync.RWMutex
 }
 
-func (jobs *Jobs) add(k string, v *job) {
+func (jobs *JobContainer) add(k string, v *Job) {
 	jobs.lk.Lock()
 	defer jobs.lk.Unlock()
 	jobs.mj[k] = v
 }
 
-func (jobs *Jobs) del(k string) {
+func (jobs *JobContainer) del(k string) {
 	jobs.lk.Lock()
 	defer jobs.lk.Unlock()
 	delete(jobs.mj, k)
 }
 
-func (jobs *Jobs) json() ([]byte, error) {
+func (jobs *JobContainer) json() ([]byte, error) {
 	jobs.lk.RLock()
 	defer jobs.lk.RUnlock()
 	return json.Marshal(jobs.mj)
 }
 
-func (jobs *Jobs) getJobs() map[string]*job {
+func (jobs *JobContainer) getJobs() map[string]*Job {
 	jobs.lk.RLock()
 	defer jobs.lk.RUnlock()
 	return jobs.mj
 }
 
-func (jobs *Jobs) replaceJobs(mj map[string]*job) {
+func (jobs *JobContainer) replaceJobs(mj map[string]*Job) {
 	jobs.lk.Lock()
 	defer jobs.lk.Unlock()
 	jobs.mj = mj
 }
 
-func (jobs *Jobs) runJobs() {
+func (jobs *JobContainer) runJobs() {
 	t := time.Now()
 	if t.Second() == 0 {
 		jobs.lk.Lock()

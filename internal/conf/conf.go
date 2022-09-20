@@ -1,19 +1,21 @@
 package conf
 
 import (
-	"bufio"
 	"crontab/internal/job"
 	"crontab/internal/logger"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
-	"strings"
 )
 
 /*
 * 任务配置文件，读取&更新
  */
+
+type ConfStruct struct {
+	jobs []job.Job
+}
 
 var confFilePath *string
 
@@ -22,32 +24,28 @@ func Load(conf *string) (bool, error) {
 		confFilePath = conf
 	}
 	logger.SysWriteLn("Load config start ...")
-	fp, err := os.Open(*confFilePath)
+
+	content, err := ioutil.ReadFile(*confFilePath)
 	if err != nil {
 		logger.SysPrintf("Err %s .\n", err)
 		return false, err
 	}
-	defer fp.Close()
-	rd := bufio.NewReader(fp)
+	var allJobs ConfStruct
+	err = json.Unmarshal(content, &allJobs)
+	if err != nil {
+		logger.SysPrintf("Err %s .\n", err)
+		return false, err
+	}
 
-	for {
-		line, rdErr := rd.ReadString('\n')
+	successful, err := job.AddAll(allJobs.jobs)
+	if err != nil {
+		logger.SysPrintf("Err %s .\n", err)
+		return false, err
+	}
 
-		if rdErr != nil && rdErr != io.EOF {
-			logger.SysPrintf("Err %s.\n", rdErr)
-			return false, rdErr
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			if rdErr == io.EOF {
-				break
-			}
-			continue
-		}
-		successful, err := job.Add(line)
-		if !successful || err != nil {
-			return false, err
-		}
+	if !successful {
+		logger.SysPrintf("Undefined error")
+		return false, fmt.Errorf("Undefined error")
 	}
 
 	logger.SysWriteLn("Load config end.")
@@ -55,18 +53,23 @@ func Load(conf *string) (bool, error) {
 }
 
 func Save() (bool, error) {
-	logger.SysWriteLn("Flush config start ...")
+	logger.SysWriteLn("Saving config ...")
 	fp, err := os.Create(*confFilePath)
 	if err != nil {
 		logger.SysWriteLn(err)
 		return false, err
 	}
 	defer fp.Close()
-	tjobs := configJobs.getJobs()
-	for _, j := range tjobs {
-		b, _ := json.Marshal(j)
-		fmt.Fprintf(fp, "%s\n", b)
+	ret, err := job.Serialize(false)
+	if err != nil {
+		logger.SysWriteLn(err)
+		return false, err
 	}
-	logger.SysWriteLn("Flush config end.")
+	_, err = fmt.Fprint(fp, ret)
+	if err != nil {
+		logger.SysWriteLn(err)
+		return false, err
+	}
+	logger.SysWriteLn("Config saved.")
 	return true, nil
 }

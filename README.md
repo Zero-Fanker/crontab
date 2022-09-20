@@ -17,11 +17,11 @@ A crontab tool build by golang
 
 * ./crontab -h
 * Usage of ./crontab:
-* -conf="crontab.conf": crontab config
+* -conf="crontab.json": crontab config
 * -logs="logs/": log path
 * -port=":8080": web port
 
-## crontab.conf格式
+## crontab.json格式
 
 `{"time":"* * * * *","cmd":"php","args":["-v"],"out":"./logs/php_v.log","comment":"备注"}`
 
