@@ -44,6 +44,10 @@ do_build() {
         export CGO_ENABLED=0
         export GOOS=linux
         export GOARCH=amd64
+    elif [ "$TargetPlatform" = "Linux_x86" ];then
+        export CGO_ENABLED=0
+        export GOOS=linux
+        export GOARCH=386
         export CC=x86_64-linux-musl-gcc
         export CXX=x86_64-linux-musl-g++
     fi
