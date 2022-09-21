@@ -14,16 +14,17 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
+	port := ":8080"
+	logPath := "logs/"
+	confs := "crontab.json"
+	flag.StringVar(&port, "port", ":8080", "web port")
+	flag.StringVar(&logPath, "logs", logPath, "log path")
+	flag.StringVar(&confs, "conf", confs, "crontab config")
 	flag.Parse()
 
-	var port *string = flag.String("port", ":8080", "web port")
-	var logPath *string = flag.String("logs", "logs/", "log path")
-	var confs *string = flag.String("conf", "crontab.json", "crontab config")
+	logger.Configure(&logPath)
 
-	logger.Configure(logPath)
-
-	loaded, loadErr := conf.Load(confs)
+	loaded, loadErr := conf.Load(&confs)
 	if !loaded {
 		fmt.Printf("Err %s exit.\n", loadErr)
 		os.Exit(1)
@@ -40,7 +41,7 @@ func main() {
 	http.HandleFunc("/start", web.Start)
 	http.HandleFunc("/status", web.Status)
 
-	startErr := http.ListenAndServe(*port, nil)
+	startErr := http.ListenAndServe(port, nil)
 	if startErr != nil {
 		fmt.Println("Start server failed.", startErr)
 		os.Exit(1)
